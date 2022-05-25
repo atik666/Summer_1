@@ -1,0 +1,10 @@
+.ipynb_checkpoints
+__pycache__
+xception_weights.hdf5
+
+*.jpg
+*hdf5
+*npy
+*.csv
+*.csv#
+*.zip
