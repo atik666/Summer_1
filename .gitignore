@@ -1,0 +1,8 @@
+*/*.zip
+*/*.npy
+*/*.png
+
+
+*.zip
+*.npy
+*.png
