@@ -9,7 +9,7 @@ from torch import nn
 from torch.nn import functional as F
 from copy import deepcopy,copy
 
-root_dir = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/python'
+root_dir = '/home/atik/Documents/MAML/Summer_1/datasets/python'
 
 img_list = np.load(os.path.join(root_dir, 'omniglot.npy')) # (1623, 20, 1, 28, 28)
 x_train = img_list[:1200]
@@ -335,6 +335,10 @@ class MetaLearner(nn.Module):
         self.meta_optim.zero_grad() # Gradient clear
         loss_qry.backward()
         self.meta_optim.step()
+
+        # Convert to numpy array
+        loss_list_qry = torch.stack(loss_list_qry)
+        loss_list_qry = loss_list_qry.cpu().detach().numpy()
         
         accs = np.array(correct_list) / (query_size * task_num)
         loss = np.array(loss_list_qry) / ( task_num)
@@ -406,9 +410,9 @@ for step in tqdm(range(epochs)):
     accs,loss = meta(x_spt, y_spt, x_qry, y_qry)
     end = time.time()
     if step % 100 == 0:
-        print("epoch:" ,step)
-        print(accs)
-        print(loss)
+        print("epoch:" , step)
+        print("acc:" , accs)
+        print("loss:" , loss)
         
     if step % 1000 == 0:
         accs = []
