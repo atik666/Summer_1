@@ -399,7 +399,7 @@ device = torch.device('cuda')
 
 meta = MetaLearner().to(device)
 
-epochs = 60000
+epochs = 60001
 for step in tqdm(range(epochs)):
     start = time.time()
     x_spt, y_spt, x_qry, y_qry = next('train')
@@ -428,27 +428,12 @@ for step in tqdm(range(epochs)):
             for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
                 test_acc = meta.finetunning(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
+                
+        print("\n")
         print('before the mean process：',np.array(accs).shape)
         accs = np.array(accs).mean(axis=0).astype(np.float16)
         print('test set accuracy:',accs)
                                             
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
