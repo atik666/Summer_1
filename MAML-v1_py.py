@@ -335,6 +335,10 @@ class MetaLearner(nn.Module):
         self.meta_optim.zero_grad() # Gradient clear
         loss_qry.backward()
         self.meta_optim.step()
+
+        # Convert to numpy array
+        loss_list_qry = torch.stack(loss_list_qry)
+        loss_list_qry = loss_list_qry.cpu().detach().numpy()
         
         accs = np.array(correct_list) / (query_size * task_num)
         loss = np.array(loss_list_qry) / ( task_num)
@@ -395,7 +399,7 @@ device = torch.device('cuda')
 
 meta = MetaLearner().to(device)
 
-epochs = 60000
+epochs = 60001
 for step in tqdm(range(epochs)):
     start = time.time()
     x_spt, y_spt, x_qry, y_qry = next('train')
@@ -406,9 +410,9 @@ for step in tqdm(range(epochs)):
     accs,loss = meta(x_spt, y_spt, x_qry, y_qry)
     end = time.time()
     if step % 100 == 0:
-        print("epoch:" ,step)
-        print(accs)
-        print(loss)
+        print("epoch:" , step)
+        print("acc:" , accs)
+        print("loss:" , loss)
         
     if step % 1000 == 0:
         accs = []
@@ -424,27 +428,12 @@ for step in tqdm(range(epochs)):
             for x_spt_one, y_spt_one, x_qry_one, y_qry_one in zip(x_spt, y_spt, x_qry, y_qry):
                 test_acc = meta.finetunning(x_spt_one, y_spt_one, x_qry_one, y_qry_one)
                 accs.append(test_acc)
+                
+        print("\n")
         print('before the mean process：',np.array(accs).shape)
         accs = np.array(accs).mean(axis=0).astype(np.float16)
         print('test set accuracy:',accs)
                                             
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
