@@ -6,3 +6,6 @@
 *.zip
 *.npy
 *.png
+*.csv
+*.pkl
+*.JPEG
