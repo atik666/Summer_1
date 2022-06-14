@@ -198,7 +198,7 @@ class Learner(nn.Module):
         self.vars_bn = nn.ParameterList()  
         
         for i, (name, param) in enumerate(self.config):
-            if name is 'conv2d':
+            if name == 'conv2d':
                 ## [ch_out, ch_in, kernel_size, kernel_size]
                 weight = nn.Parameter(torch.ones(*param[:4])) ## 产生*param大小的全为1的tensor
                 torch.nn.init.kaiming_normal_(weight) ## 初始化权重
@@ -207,14 +207,14 @@ class Learner(nn.Module):
                 bias = nn.Parameter(torch.zeros(param[0]))
                 self.vars.append(bias)
                 
-            elif name is 'linear':
+            elif name == 'linear':
                 weight = nn.Parameter(torch.ones(*param))
                 torch.nn.init.kaiming_normal_(weight)
                 self.vars.append(weight)
                 bias  = nn.Parameter(torch.zeros(param[0]))
                 self.vars.append(bias)
             
-            elif name is 'bn':
+            elif name == 'bn':
                 ## 对小批量(mini-batch)的2d或3d输入进行批标准化(Batch Normalization)操作,
                 ## BN层在训练过程中，会将一个Batch的中的数据转变成正态分布
                 weight = nn.Parameter(torch.ones(param[0]))
@@ -245,48 +245,48 @@ class Learner(nn.Module):
         :return: 
         '''
         
-        if vars is None:
+        if vars == None:
             vars = self.vars
             
         idx = 0 ; bn_idx = 0
         for name, param in self.config:
-            if name is 'conv2d':
+            if name == 'conv2d':
                 weight, bias = vars[idx], vars[idx + 1]
                 x = F.conv2d(x, weight, bias, stride = param[4], padding = param[5]) 
                 idx += 2
                 
-            elif name is 'linear':
+            elif name == 'linear':
                 weight, bias = vars[idx], vars[idx + 1]
                 x = F.linear(x, weight, bias)
                 idx += 2
                 
-            elif name is 'bn':
+            elif name == 'bn':
                 weight, bias = vars[idx], vars[idx + 1]
                 running_mean, running_var = self.vars_bn[bn_idx], self.vars_bn[bn_idx + 1]
                 x = F.batch_norm(x, running_mean, running_var, weight= weight, bias = bias, training = bn_training)
                 idx += 2
                 bn_idx += 2
             
-            elif name is 'flatten':
+            elif name == 'flatten':
                 x = x.view(x.size(0), -1)
             
-            elif name is 'relu':
+            elif name == 'relu':
                 x = F.relu(x, inplace = [param[0]])
             
-            elif name is 'reshape':
+            elif name == 'reshape':
                 # [b, 8] => [b, 2, 2, 2]
                 x = x.view(x.size(0), *param)
-            elif name is 'leakyrelu':
+            elif name == 'leakyrelu':
                 x = F.leaky_relu(x, negative_slope=param[0], inplace=param[1])
-            elif name is 'tanh':
+            elif name == 'tanh':
                 x = F.tanh(x)
-            elif name is 'sigmoid':
+            elif name == 'sigmoid':
                 x = torch.sigmoid(x)
-            elif name is 'upsample':
+            elif name == 'upsample':
                 x = F.upsample_nearest(x, scale_factor=param[0])
-            elif name is 'max_pool2d':
+            elif name == 'max_pool2d':
                 x = F.max_pool2d(x, param[0], param[1], param[2])
-            elif name is 'avg_pool2d':
+            elif name == 'avg_pool2d':
                 x = F.avg_pool2d(x, param[0], param[1], param[2])
             else:
                 raise NotImplementedError
@@ -479,7 +479,6 @@ k_spt = 5
 epochs = 1000001
 
 
-
 def main():
 
     torch.manual_seed(222)
@@ -508,7 +507,7 @@ def main():
         ('linear', [n_way, 32 * 5 * 5])
     ]
 
-    device = torch.device('cuda:2')
+    device = torch.device('cuda:0')
     maml = Meta(config).to(device)
 
     tmp = filter(lambda x: x.requires_grad, maml.parameters())
@@ -518,7 +517,7 @@ def main():
 
     # batchsz here means total episode number
     
-    path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/miniImageNet/'
+    path = '/home/atik/Documents/MAML/Summer_1/datasets/miniImageNet/mini-imagenet'
     mini_train = MiniImagenet(path, mode='train', n_way=5, k_shot=5,
                         k_query=15,
                         batchsz=10000, resize=84)
