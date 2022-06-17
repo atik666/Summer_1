@@ -9,7 +9,7 @@ from torch import nn
 from torch.nn import functional as F
 from copy import deepcopy,copy
 
-root_dir = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/python'
+root_dir = '/home/atik/Documents/MAML/Summer_1/datasets/python'
 
 img_list = np.load(os.path.join(root_dir, 'omniglot.npy')) # (1623, 20, 1, 28, 28)
 x_train = img_list[:1200]
