@@ -508,7 +508,7 @@ def main():
         ('linear', [n_way, 32 * 5 * 5])
     ]
 
-    device = torch.device('cuda:2')
+    device = torch.device('cuda:0')
     maml = Meta(config).to(device)
 
     tmp = filter(lambda x: x.requires_grad, maml.parameters())
