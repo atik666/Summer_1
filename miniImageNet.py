@@ -134,11 +134,11 @@ class MiniImagenet(Dataset):
         # [setsz, 3, resize, resize]
         support_x = torch.FloatTensor(self.setsz, 3, self.resize, self.resize)
         # [setsz]
-        support_y = np.zeros((self.setsz), dtype=np.int)
+        support_y = np.zeros((self.setsz), dtype=np.int32)
         # [querysz, 3, resize, resize]
         query_x = torch.FloatTensor(self.querysz, 3, self.resize, self.resize)
         # [querysz]
-        query_y = np.zeros((self.querysz), dtype=np.int)
+        query_y = np.zeros((self.querysz), dtype=np.int32)
 
         flatten_support_x = [os.path.join(self.path, item)
                              for sublist in self.support_x_batch[index] for item in sublist]
@@ -464,7 +464,7 @@ from    torch.optim import lr_scheduler
 import  random, sys, pickle
 import  argparse
 import torch.nn.functional as F
-
+from tqdm import tqdm
 
 
 def mean_confidence_interval(accs, confidence=0.95):
@@ -512,8 +512,8 @@ def main():
 
     tmp = filter(lambda x: x.requires_grad, maml.parameters())
     num = sum(map(lambda x: np.prod(x.shape), tmp))
-#     print(maml)
-#     print('Total trainable tensors:', num)
+    print(maml)
+    print('Total trainable tensors:', num)
 
     # batchsz here means total episode number
     
@@ -525,11 +525,10 @@ def main():
                              k_query=15,
                              batchsz=100, resize=84)
     
-    
 
-    for epoch in range(epochs//10000):
+    for epoch in tqdm(range(epochs//10000)):
         # fetch meta_batchsz num of episode each time
-        db = DataLoader(mini_train, 4, shuffle=True, num_workers=4, pin_memory=True)
+        db = DataLoader(mini_train, batch_size=4, shuffle=True, num_workers=4, pin_memory=True)
 
         for step, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
 
@@ -538,10 +537,10 @@ def main():
             
             
             if step % 100 == 0:
-                print('step:', step, '\ttraining acc:', accs)
+                print('\n','step:', step, '\ttraining acc:', accs)
 
             if step % 1000 == 0:  # evaluation
-                db_test = DataLoader(mini_test, 1, shuffle=True, num_workers=4, pin_memory=True)
+                db_test = DataLoader(mini_test, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
                 accs_all_test = []
 
                 for x_spt, y_spt, x_qry, y_qry in db_test:
@@ -556,13 +555,6 @@ def main():
                 print('Test acc:', accs)
 
 main()    
-
-
-
-
-
-
-
 
 
 
