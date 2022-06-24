@@ -1,10 +1,3 @@
-# import pickle
-
-# path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/miniImageNEt/archive'
-
-# with open(path+'/mini-imagenet-cache-val.pkl', 'rb') as f:
-#     data = pickle.load(f)
-
 import os
 import torch
 from torch.utils.data import Dataset
