@@ -58,12 +58,13 @@ filenames = next(walk(path))[1]
 
 import glob
 
-for images in glob.iglob(f'{path+filenames[0]}/*'):
-    # check if the image ends with png
-    if (images.endswith(".jpeg")):
-        print(images)
-        img = 
-
+img = []
+for i in range(len(filenames)):
+    for images in glob.iglob(f'{path+filenames[0]}/*'):
+        # check if the image ends with png
+        if (images.endswith(".jpeg")):
+            img_temp = images[len(path+filenames[0]+'/'):]
+            img.append(img_temp)
 
  
 
