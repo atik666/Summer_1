@@ -3,10 +3,10 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import transforms
 import numpy as np
-import collections
 from PIL import Image
-import csv
 import random
+from os import walk
+import glob
 
 
 class MiniImagenet(Dataset):
@@ -53,10 +53,10 @@ class MiniImagenet(Dataset):
                                                  transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
                                                  ])
 
-        self.path = os.path.join(root, 'images')  # image path
+        self.path = os.path.join(root, mode)  # image path
         
         # :return: dictLabels: {label1: [filename1, filename2, filename3, filename4,...], }
-        dictLabels = self.loadCSV(os.path.join(root, mode + '.csv'))  # csv path
+        dictLabels = self.loadCSV(root, mode)  # csv path
         self.data = []
         self.img2label = {}
         for i, (label, imgs) in enumerate(dictLabels.items()):
@@ -66,24 +66,26 @@ class MiniImagenet(Dataset):
 
         self.create_batch(self.batchsz)
 
-    def loadCSV(self, csvf):
-        """
-        return a dict saving the information of csv
-        :param splitFile: csv file name
-        :return: {label:[file1, file2 ...]}
-        """
+    def loadCSV(self, root, mode):
+        
+        mode = mode+'/'
+        path = os.path.join(root, mode) 
+        
+        filenames = next(walk(path))[1]
+    
         dictLabels = {}
-        with open(csvf) as csvfile:
-            csvreader = csv.reader(csvfile, delimiter=',')
-            next(csvreader, None)  # skip (filename, label)
-            for i, row in enumerate(csvreader):
-                filename = row[0]
-                label = row[1]
-                # append filename to current label
-                if label in dictLabels.keys():
-                    dictLabels[label].append(filename)
-                else:
-                    dictLabels[label] = [filename]
+        
+        for i in range(len(filenames)):  
+            img = []
+            for images in glob.iglob(f'{path+filenames[i]}/*'):
+                # check if the image ends with png
+                if (images.endswith(".jpeg")):
+                    img_temp = images[len(path+filenames[i]+'/'):]
+                    img_temp = filenames[i]+'/'+img_temp
+                    img.append(img_temp)
+                
+                dictLabels[filenames[i]] = img
+                
         return dictLabels
 
     def create_batch(self, batchsz):
@@ -95,12 +97,14 @@ class MiniImagenet(Dataset):
         """
         self.support_x_batch = []  # support set batch
         self.query_x_batch = []  # query set batch
+        self.selected_classes = []
         for b in range(batchsz):  # for each batch
             # 1.select n_way classes randomly
             selected_cls = np.random.choice(self.cls_num, self.n_way, False)  # no duplicate
             np.random.shuffle(selected_cls)
             support_x = []
             query_x = []
+            selected_classes_temp = []
             for cls in selected_cls:
                 # 2. select k_shot + k_query for each class
                 selected_imgs_idx = np.random.choice(len(self.data[cls]), self.k_shot + self.k_query, False)
@@ -110,6 +114,7 @@ class MiniImagenet(Dataset):
                 support_x.append(
                     np.array(self.data[cls])[indexDtrain].tolist())  # get all images filename for current Dtrain
                 query_x.append(np.array(self.data[cls])[indexDtest].tolist())
+                selected_classes_temp.append(cls)
 
             # shuffle the correponding relation between support set and query set
             random.shuffle(support_x)
@@ -117,6 +122,7 @@ class MiniImagenet(Dataset):
 
             self.support_x_batch.append(support_x)  # append set to current sets
             self.query_x_batch.append(query_x)  # append sets to current sets
+            self.selected_classes.append(selected_classes_temp)
 
     def __getitem__(self, index):
         """
@@ -127,22 +133,34 @@ class MiniImagenet(Dataset):
         # [setsz, 3, resize, resize]
         support_x = torch.FloatTensor(self.setsz, 3, self.resize, self.resize)
         # [setsz]
-        support_y = np.zeros((self.setsz), dtype=np.int32)
+        #support_y = np.zeros((self.setsz), dtype=np.int32)
         # [querysz, 3, resize, resize]
         query_x = torch.FloatTensor(self.querysz, 3, self.resize, self.resize)
         # [querysz]
-        query_y = np.zeros((self.querysz), dtype=np.int32)
+        #query_y = np.zeros((self.querysz), dtype=np.int32)
 
         flatten_support_x = [os.path.join(self.path, item)
                              for sublist in self.support_x_batch[index] for item in sublist]
-        support_y = np.array(
-            [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
-             for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
+        # support_y = np.array(
+        #     [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
+        #      for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
+        
+        support_y_list = []
+        for i in range(len(self.support_x_batch[index])):
+            class_temp = np.repeat(self.selected_classes[index][i], len(self.support_x_batch[index][i]))
+            support_y_list.append(class_temp)
+        support_y = np.array(support_y_list).flatten().astype(np.int32)
 
         flatten_query_x = [os.path.join(self.path, item)
                            for sublist in self.query_x_batch[index] for item in sublist]
-        query_y = np.array([self.img2label[item[:9]]
-                            for sublist in self.query_x_batch[index] for item in sublist]).astype(np.int32)
+        # query_y = np.array([self.img2label[item[:9]]
+        #                     for sublist in self.query_x_batch[index] for item in sublist]).astype(np.int32)
+        
+        query_y_list = []
+        for i in range(len(self.query_x_batch[index])):
+            class_temp = np.repeat(self.selected_classes[index][i], len(self.query_x_batch[index][i]))
+            query_y_list.append(class_temp)
+        query_y = np.array(query_y_list).flatten().astype(np.int32)
 
         # print('global:', support_y, query_y)
         # support_y: [setsz]
@@ -469,7 +487,7 @@ def mean_confidence_interval(accs, confidence=0.95):
 
 n_way = 5
 k_spt = 5
-epochs = 1000001
+epochs = 31
 
 
 def main():
@@ -510,16 +528,16 @@ def main():
 
     # batchsz here means total episode number
     
-    path = '/home/atik/Documents/MAML/Summer_1/datasets/miniImageNet/mini-imagenet'
-    mini_train = MiniImagenet(path, mode='train', n_way=5, k_shot=5,
-                        k_query=15,
+    path = '/home/atik/Documents/Ocast/borescope-adr-lm2500-data-develop/Processed/wo_Dup/'
+    mini_train = MiniImagenet(path, mode='train', n_way=3, k_shot=5,
+                        k_query=8,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=5, k_shot=5,
-                             k_query=15,
+    mini_test = MiniImagenet(path, mode='test', n_way=3, k_shot=5,
+                             k_query=4,
                              batchsz=100, resize=84)
     
 
-    for epoch in tqdm(range(epochs//10000)):
+    for epoch in tqdm(range(epochs)):
         # fetch meta_batchsz num of episode each time
         db = DataLoader(mini_train, batch_size=4, shuffle=True, num_workers=4, pin_memory=True)
 
