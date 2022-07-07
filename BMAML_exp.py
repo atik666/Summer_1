@@ -1,50 +1,53 @@
 import os
 from os import walk
 import glob
-from torchvision.transforms import transforms
-from PIL import Image
 import numpy as np
+import cv2
+import random
 
 root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
 
-path = os.path.join(root, 'train/') 
+# path = os.path.join(root, 'train/') 
 
-filenames = next(walk(path))[1]
+# filenames = next(walk(path))[1]
 
-dictLabels = {}
+# dictLabels = {}
 
-for i in range(len(filenames)):  
-    img = []
-    for images in glob.iglob(f'{path+filenames[i]}/*'):
-        # check if the image ends with png
-        if (images.endswith(".jpg")):
-            img_temp = images[len(path+filenames[i]+'/'):]
-            img_temp = filenames[i]+'/'+img_temp
-            img.append(img_temp)
+# for i in range(len(filenames)):  
+#     img = []
+#     for images in glob.iglob(f'{path+filenames[i]}/*'):
+#         # check if the image ends with png
+#         if (images.endswith(".jpg")):
+#             img_temp = images[len(path+filenames[i]+'/'):]
+#             img_temp = filenames[i]+'/'+img_temp
+#             img.append(img_temp)
         
-        dictLabels[filenames[i]] = img
+#         dictLabels[filenames[i]] = img
 
-# resize = 84
-# transform = transforms.Compose([lambda x: Image.open(x).convert('RGB'),
-#                                      transforms.Resize((resize, resize)),
-#                                      # transforms.RandomHorizontalFlip(),
-#                                      # transforms.RandomRotation(5),
-#                                      transforms.ToTensor(),
-#                                      transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-#                                      ])
+# file = list(dictLabels.values())
 
-#file = next(iter(dictLabels.items()))[1]
+def load_files(loc: str) -> list:
+    
+    global mood
+    path = os.path.join(root, mood, '')
+    
+    filenames = next(walk(path))[1]
+    dictLabels = {}
+    for i in range(len(filenames)):  
+        img = []
+        for images in glob.iglob(f'{path+filenames[i]}/*'):
+            # check if the image ends with png
+            if (images.endswith(".jpg")):
+                img_temp = images[len(path+filenames[i]+'/'):]
+                img_temp = filenames[i]+'/'+img_temp
+                img.append(img_temp)
+            
+            dictLabels[filenames[i]] = img
 
-file = list(dictLabels.values())
-# img = transform(path+file[0])
-
-# img = np.asarray(img)
-# img = np.moveaxis(img, 2, 0)
-# img_int = img.astype(np.uint8)
-
-
-import cv2
-import random
+    return list(dictLabels.values())
+    
+mood = 'train'
+file = load_files(root)      
 
 class_num = 0
 num_samples = 10
@@ -62,23 +65,57 @@ for i in range(num_samples):
     
     file_array = file[rand_class][rand_image]
     image_array.append(file_array)
+
+# def pos_class(classes: list, batch: int) -> list:
+#     class_num = len(classes)
+#     img_per_class = int(len(classes)[0]/batch)
     
+    
+
+    
+#     return 
+
+classes = file
+batch = 10
+class_num = len(classes)
+batch_size = int(len(classes[0])/batch)
+
+images = []
+class_files = []
+for k in range(class_num):
+
+    classes_n = [classes[k][i:i+batch_size] \
+                 for i in range(0, len(classes[k]), batch_size)]
+    
+    images_n = [[cv2.imread(os.path.join(root, mood, '')+classes_n[j][i]) \
+                for i in range(len(classes_n[j]))] for j in range(len(classes_n))]
+        
+    images.append(images_n)
+    class_files.append(classes_n)
+    
+    
+random.shuffle(file)
+samples = file[class_num][0:num_samples]
+
+image_array = []
+for i in range(num_samples):
+    rand_class = int(np.random.randint(256,size=(1, 1)))
+    rand_image = int(np.random.randint(100,size=(1, 1)))
+    
+    while rand_class == class_num:
+        rand_class = int(np.random.randint(256,size=(1, 1)))
+    
+    file_array = file[rand_class][rand_image]
+    image_array.append(file_array)
+    
+
 
 
 img = [cv2.imread(path+samples[i]) for i in range(num_samples)]
 img_neg = [cv2.imread(path+image_array[i]) for i in range(num_samples)]
 
-img2 = [np.expand_dims(img[i].mean(axis=2).flatten(), axis=1) for i in range(len(img))]
-img_neg = [np.expand_dims(img_neg[i].mean(axis=2).flatten(), axis=1) for i in range(len(img_neg))]
-
-def normalizeData(data):
-    return (data - np.min(data)) / (np.max(data) - np.min(data))
-
-img2 = [normalizeData(img2[i]) for i in range(len(img2))]
-img_neg = [normalizeData(img_neg[i]) for i in range(len(img_neg))]
-
 def orb_sim(img1, img2):
-  # SIFT is no longer available in cv2 so using ORB
+    
   orb = cv2.ORB_create()
 
   # detect keypoints and descriptors
@@ -96,47 +133,8 @@ def orb_sim(img1, img2):
     return 0
   return len(similar_regions) / len(matches)
 
+similarity = [[orb_sim(img[j], img_neg[i]) for i in range(num_samples)] for j in range(num_samples)]
 
-""""""
-
-img = cv2.imread(path+file[0])
-vals = img.mean(axis=2).flatten()
-
-# import matplotlib.pyplot as plt
-# from sklearn import preprocessing
-
-# vals = img.mean(axis=2).flatten()
-# # plot histogram with 255 bins
-# b, bins, patches = plt.hist(vals, 255)
-# b = np.expand_dims(b, 1)
-# b = preprocessing.normalize(b)
-# plt.xlim([0,255])
-# plt.show()
-
-
-# img2 = cv2.imread(path+file[2])
-
-
-# import matplotlib.pyplot as plt
-# vals2 = img2.mean(axis=2).flatten()
-# # plot histogram with 255 bins
-# b2, bins, patches = plt.hist(vals2, 255)
-# b2 = np.expand_dims(b2, 1)
-# b2 = preprocessing.normalize(b2)
-# plt.xlim([0,255])
-# plt.show()
-
-# dist = np.linalg.norm(b - b2)
-
-# from scipy import signal
-
-# d1, d2, d3 = img.shape
-
-# x_data_reshaped = img.reshape((d1*d2*d3))
-# x_data_reshaped2 = img2.reshape((d1*d2*d3))
-
-# corr = signal.correlate(x_data_reshaped, x_data_reshaped2)
-
-
+sim_val = np.mean([sum(similarity[i])/num_samples for i in range(num_samples)])
 
 
