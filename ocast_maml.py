@@ -9,9 +9,9 @@ import csv
 import random
 
 batchsz = 20  # batch of set, not batch of imgs
-n_way = 5  # n-way
-k_shot = 5  # k-shot
-k_query = 4  # for evaluation
+n_way = 2  # n-way
+k_shot = 20  # k-shot
+k_query = 15  # for evaluation
 setsz = n_way * k_shot  # num of samples per set
 querysz = n_way * k_query  # number of samples per set for evaluation
 resize = 84  # resize to
@@ -23,7 +23,8 @@ transform = transforms.Compose([lambda x: Image.open(x).convert('RGB'),
                                      transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
                                      ])
 
-root = '/home/atik/Documents/Ocast/borescope-adr-lm2500-data-develop/Processed/wo_Dup/'
+root = '/home/atik/Documents/MAML/Summer_1/datasets/256/'
+#root = '/home/atik/Documents/MAML/Summer_1/datasets/256/'
 path = os.path.join(root, 'test/')  # image path
 
 
@@ -42,7 +43,7 @@ def loadCSV(root, mode):
         img = []
         for images in glob.iglob(f'{path+filenames[i]}/*'):
             # check if the image ends with png
-            if (images.endswith(".jpeg")):
+            if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
                 img_temp = images[len(path+filenames[i]+'/'):]
                 img_temp = filenames[i]+'/'+img_temp
                 print(img_temp)
@@ -52,7 +53,7 @@ def loadCSV(root, mode):
             
     return dict_labels
     
-mode = 'test/'
+mode = 'train/'
 dictLabels = loadCSV(root,mode)
     
 data = []
@@ -109,7 +110,15 @@ for index in range(batchsz):
         query_y_list.append(class_temp)
     query_y = np.array(query_y_list).flatten().astype(np.int32)
 
-                         
+
+unique = np.unique(support_y)
+random.shuffle(unique)
+# relative means the label ranges from 0 to n-way
+support_y_relative = np.zeros(setsz)
+query_y_relative = np.zeros(querysz)
+for idx, l in enumerate(unique):
+    support_y_relative[support_y == l] = idx
+    query_y_relative[query_y == l] = idx                         
 
                          
 

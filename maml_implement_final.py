@@ -5,8 +5,10 @@ from torchvision.transforms import transforms
 import numpy as np
 from PIL import Image
 import random
-from os import walk
-import glob
+
+import warnings
+warnings.filterwarnings("ignore")
+
 
 class MiniImagenet(Dataset):
     """
@@ -67,44 +69,43 @@ class MiniImagenet(Dataset):
 
     def loadCSV(self, root, mode):
         
-        mode = mode+'/'
-        path = os.path.join(root, mode) 
-        def loadCSV(root, mode):
-            
-            path = os.path.join(root, mode) 
-            
-            filenames = next(walk(path))[1]
-
-            dict_labels = {}
-            
-            for i in range(len(filenames)):  
-                img = []
-                for images in glob.iglob(f'{path+filenames[i]}/*'):
-                    # check if the image ends with png
-                    if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
-                        img_temp = images[len(path+filenames[i]+'/'):]
-                        img_temp = filenames[i]+'/'+img_temp
-                        print(img_temp)
-                        img.append(img_temp)
-                    
-                    dict_labels[filenames[i]] = img
-                    
-            return dict_labels
-        filenames = next(walk(path))[1]
-    
-        dictLabels = {}
+        path_temp = "/home/atik/Documents/MAML/Summer_1/datasets/256/"
         
-        for i in range(len(filenames)):  
-            img = []
-            for images in glob.iglob(f'{path+filenames[i]}/*'):
-                # check if the image ends with png
-                if (images.endswith(".jpeg")):
-                    img_temp = images[len(path+filenames[i]+'/'):]
-                    img_temp = filenames[i]+'/'+img_temp
-                    img.append(img_temp)
-                
-                dictLabels[filenames[i]] = img
-                
+        if mode == 'train':
+            with open(path_temp+"final_pos_classes_10", "rb") as fp:
+                file = pickle.load(fp)
+            
+            file_dict = {v: k for v, k in enumerate(file)}
+            
+            with open(path_temp+"final_neg_classes_10", "rb") as fp:
+                file_neg = pickle.load(fp)
+            
+            file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
+            
+            def Merge(dict1, dict2):
+                res = {**dict1, **dict2}
+                return res
+            
+            dictLabels = Merge(file_dict, file_neg_dict)
+            
+        elif mode == 'test':
+
+            with open(path_temp+"final_pos_classes_test_10", "rb") as fp:
+                file = pickle.load(fp)
+            
+            file_dict = {v: k for v, k in enumerate(file)}
+            
+            with open(path_temp+"final_neg_classes_test_10", "rb") as fp:
+                file_neg = pickle.load(fp)
+            
+            file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
+            
+            def Merge(dict1, dict2):
+                res = {**dict1, **dict2}
+                return res
+            
+            dictLabels = Merge(file_dict, file_neg_dict)
+
         return dictLabels
 
     def create_batch(self, batchsz):
@@ -119,7 +120,9 @@ class MiniImagenet(Dataset):
         self.selected_classes = []
         for b in range(batchsz):  # for each batch
             # 1.select n_way classes randomly
-            selected_cls = np.random.choice(self.cls_num, self.n_way, False)  # no duplicate
+            selected_cls_pos = np.random.choice(int(self.cls_num/2), 1, False)  # no duplicate
+            selected_cls_neg = selected_cls_pos+256 # no duplicate
+            selected_cls = np.concatenate((selected_cls_pos, selected_cls_neg), axis=0)
             np.random.shuffle(selected_cls)
             support_x = []
             query_x = []
@@ -137,6 +140,7 @@ class MiniImagenet(Dataset):
 
             # shuffle the correponding relation between support set and query set
             random.shuffle(support_x)
+            #print(support_x)
             random.shuffle(query_x)
 
             self.support_x_batch.append(support_x)  # append set to current sets
@@ -504,8 +508,11 @@ def mean_confidence_interval(accs, confidence=0.95):
     return m, h
 
 
-n_way = 4
-epochs = 31
+n_way = 2
+epochs = 10
+k_shot = 5
+k_query = 5
+
 
 
 def main():
@@ -546,14 +553,13 @@ def main():
 
     # batchsz here means total episode number
     
-    path = '/home/atik/Documents/Ocast/borescope-adr-lm2500-data-develop/Processed/wo_Dup/'
-    mini_train = MiniImagenet(path, mode='train', n_way=n_way, k_shot=5,
-                        k_query=15,
+    path = "/home/atik/Documents/MAML/Summer_1/datasets/256/"
+    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=k_shot,
+                        k_query=k_query,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=n_way, k_shot=5,
-                             k_query=4,
+    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=k_shot,
+                             k_query=k_query,
                              batchsz=100, resize=84)
-    
 
     for epoch in tqdm(range(epochs)):
         # fetch meta_batchsz num of episode each time
@@ -564,11 +570,10 @@ def main():
             x_spt, y_spt, x_qry, y_qry = x_spt.to(device), y_spt.to(device), x_qry.to(device), y_qry.to(device)
             accs = maml(x_spt, y_spt, x_qry, y_qry)
             
-            
             if step % 100 == 0:
                 print('\n','step:', step, '\ttraining acc:', accs)
 
-            if step % 1000 == 0:  # evaluation
+            if step % 1000 == 0 or step == 2400:  # evaluation
                 db_test = DataLoader(mini_test, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
                 accs_all_test = []
 

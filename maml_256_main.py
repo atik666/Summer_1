@@ -63,33 +63,12 @@ class MiniImagenet(Dataset):
             self.img2label[label] = i + self.startidx  # {"img_name[:9]":label}
         self.cls_num = len(self.data)
 
-        self.create_batch(self.batchsz)
+        self.create_batch(self.batchsz, mode)
 
     def loadCSV(self, root, mode):
         
-        mode = mode+'/'
-        path = os.path.join(root, mode) 
-        def loadCSV(root, mode):
-            
-            path = os.path.join(root, mode) 
-            
-            filenames = next(walk(path))[1]
-
-            dict_labels = {}
-            
-            for i in range(len(filenames)):  
-                img = []
-                for images in glob.iglob(f'{path+filenames[i]}/*'):
-                    # check if the image ends with png
-                    if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
-                        img_temp = images[len(path+filenames[i]+'/'):]
-                        img_temp = filenames[i]+'/'+img_temp
-                        print(img_temp)
-                        img.append(img_temp)
-                    
-                    dict_labels[filenames[i]] = img
-                    
-            return dict_labels
+        path = os.path.join(root, mode, "") 
+        
         filenames = next(walk(path))[1]
     
         dictLabels = {}
@@ -98,16 +77,16 @@ class MiniImagenet(Dataset):
             img = []
             for images in glob.iglob(f'{path+filenames[i]}/*'):
                 # check if the image ends with png
-                if (images.endswith(".jpeg")):
+                if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
                     img_temp = images[len(path+filenames[i]+'/'):]
                     img_temp = filenames[i]+'/'+img_temp
                     img.append(img_temp)
                 
                 dictLabels[filenames[i]] = img
-                
+                    
         return dictLabels
 
-    def create_batch(self, batchsz):
+    def create_batch(self, batchsz, mode):
         """
         create batch for meta-learning.
         ×episode× here means batch, and it means how many sets we want to retain.
@@ -119,6 +98,7 @@ class MiniImagenet(Dataset):
         self.selected_classes = []
         for b in range(batchsz):  # for each batch
             # 1.select n_way classes randomly
+        
             selected_cls = np.random.choice(self.cls_num, self.n_way, False)  # no duplicate
             np.random.shuffle(selected_cls)
             support_x = []
@@ -169,6 +149,7 @@ class MiniImagenet(Dataset):
             class_temp = np.repeat(self.selected_classes[index][i], len(self.support_x_batch[index][i]))
             support_y_list.append(class_temp)
         support_y = np.array(support_y_list).flatten().astype(np.int32)
+        #print("support_y: ", support_y)
 
         flatten_query_x = [os.path.join(self.path, item)
                            for sublist in self.query_x_batch[index] for item in sublist]
@@ -180,6 +161,7 @@ class MiniImagenet(Dataset):
             class_temp = np.repeat(self.selected_classes[index][i], len(self.query_x_batch[index][i]))
             query_y_list.append(class_temp)
         query_y = np.array(query_y_list).flatten().astype(np.int32)
+        #print("query_y: ", query_y)
 
         # print('global:', support_y, query_y)
         # support_y: [setsz]
@@ -210,7 +192,7 @@ class MiniImagenet(Dataset):
     
 
 from torch import nn
-import torch.nn.functional as F
+import torch.nn.functional as F 
 
 class Learner(nn.Module):
     """
@@ -504,8 +486,8 @@ def mean_confidence_interval(accs, confidence=0.95):
     return m, h
 
 
-n_way = 4
-epochs = 31
+n_way = 2
+epochs = 25
 
 
 def main():
@@ -546,12 +528,12 @@ def main():
 
     # batchsz here means total episode number
     
-    path = '/home/atik/Documents/Ocast/borescope-adr-lm2500-data-develop/Processed/wo_Dup/'
-    mini_train = MiniImagenet(path, mode='train', n_way=n_way, k_shot=5,
+    path = '/home/atik/Documents/MAML/Summer_1/datasets/256/'
+    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=5,
                         k_query=15,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=n_way, k_shot=5,
-                             k_query=4,
+    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=5,
+                             k_query=15,
                              batchsz=100, resize=84)
     
 

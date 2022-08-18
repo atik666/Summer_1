@@ -138,11 +138,13 @@ class MiniImagenet(Dataset):
         support_y = np.array(
             [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
              for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
+        #print("support_y: ", support_y)
 
         flatten_query_x = [os.path.join(self.path, item)
                            for sublist in self.query_x_batch[index] for item in sublist]
         query_y = np.array([self.img2label[item[:9]]
                             for sublist in self.query_x_batch[index] for item in sublist]).astype(np.int32)
+        #print("query_y: ", query_y)
 
         # print('global:', support_y, query_y)
         # support_y: [setsz]
