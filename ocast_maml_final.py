@@ -67,29 +67,8 @@ class MiniImagenet(Dataset):
 
     def loadCSV(self, root, mode):
         
-        mode = mode+'/'
-        path = os.path.join(root, mode) 
-        def loadCSV(root, mode):
-            
-            path = os.path.join(root, mode) 
-            
-            filenames = next(walk(path))[1]
-
-            dict_labels = {}
-            
-            for i in range(len(filenames)):  
-                img = []
-                for images in glob.iglob(f'{path+filenames[i]}/*'):
-                    # check if the image ends with png
-                    if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
-                        img_temp = images[len(path+filenames[i]+'/'):]
-                        img_temp = filenames[i]+'/'+img_temp
-                        print(img_temp)
-                        img.append(img_temp)
-                    
-                    dict_labels[filenames[i]] = img
-                    
-            return dict_labels
+        path = os.path.join(root, mode, "") 
+        
         filenames = next(walk(path))[1]
     
         dictLabels = {}
@@ -98,13 +77,13 @@ class MiniImagenet(Dataset):
             img = []
             for images in glob.iglob(f'{path+filenames[i]}/*'):
                 # check if the image ends with png
-                if (images.endswith(".jpeg")):
+                if (images.endswith(".jpeg")) or (images.endswith(".jpg")):
                     img_temp = images[len(path+filenames[i]+'/'):]
                     img_temp = filenames[i]+'/'+img_temp
                     img.append(img_temp)
                 
                 dictLabels[filenames[i]] = img
-                
+                    
         return dictLabels
 
     def create_batch(self, batchsz):
@@ -136,8 +115,8 @@ class MiniImagenet(Dataset):
                 selected_classes_temp.append(cls)
 
             # shuffle the correponding relation between support set and query set
-            random.shuffle(support_x)
-            random.shuffle(query_x)
+            # random.shuffle(support_x)
+            # random.shuffle(query_x)
 
             self.support_x_batch.append(support_x)  # append set to current sets
             self.query_x_batch.append(query_x)  # append sets to current sets
@@ -504,8 +483,8 @@ def mean_confidence_interval(accs, confidence=0.95):
     return m, h
 
 
-n_way = 4
-epochs = 31
+n_way = 5
+epochs = 6
 
 
 def main():
